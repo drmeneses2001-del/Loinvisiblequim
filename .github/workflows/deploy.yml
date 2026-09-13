@@ -1,0 +1,54 @@
+name: Descomprimir y publicar en GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Descomprimir ver-lo-invisible.zip
+        run: |
+          set -e
+          mkdir -p _site
+          if [ ! -f "ver-lo-invisible.zip" ]; then
+            echo "::error::No se encontró ver-lo-invisible.zip en la raíz del repositorio."
+            exit 1
+          fi
+          rm -rf /tmp/extraido && mkdir -p /tmp/extraido
+          unzip -o ver-lo-invisible.zip -d /tmp/extraido
+          if [ -d "/tmp/extraido/ver-lo-invisible" ]; then
+            cp -r /tmp/extraido/ver-lo-invisible/. _site/
+          else
+            cp -r /tmp/extraido/. _site/
+          fi
+          ls -la _site
+
+      - name: Empaquetar el sitio para Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar en GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
